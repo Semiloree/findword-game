@@ -139,7 +139,12 @@
         <div class="d-flex justify-content-end mb-2">
             <button id="pause-btn" class="btn btn-secondary btn-sm me-2">⏸️ Pause</button>
             <button id="feedback-btn" class="btn btn-light btn-sm me-2">💬 Feedback</button>
-            <button id="contact-btn" class="btn btn-outline-light btn-sm">📞 Contact Us</button>
+            <button id="contact-btn" class="btn btn-outline-light btn-sm me-2">📞 Contact Us</button>
+            <form action="{% url 'logout' %}" method="post">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger">Logout</button>
+          </form>
+          
         </div>
 
         <!-- Controls: Timer, Score, High Score, Restart, Hint -->

@@ -15,6 +15,10 @@ def home(request):
     return render(request, 'home.html')
 
 def register_view(request):
+
+    if request.user.is_authenticated:
+        return redirect('game')
+    
     if request.method == 'POST':
         full_name = request.POST.get('full_name')
         email = request.POST.get('email')
@@ -44,6 +48,10 @@ from django.contrib import messages
 from django.shortcuts import render, redirect
 
 def login_view(request):
+
+    if request.user.is_authenticated:
+        return redirect('game')
+
     if request.method == 'POST':
         email = request.POST.get('email')
         password = request.POST.get('password')

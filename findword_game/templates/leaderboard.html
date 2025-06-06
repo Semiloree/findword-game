@@ -1,0 +1,30 @@
+<!-- leaderboard.html -->
+{% extends 'base.html' %}
+
+{% block title %}Top Scores{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="text-center mb-4">🏆 Top 10 Scores</h2>
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>Rank</th>
+                <th>Player</th>
+                <th>Score</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for score in top_scores %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ score.user.username }}</td>
+                    <td>{{ score.score }}</td>
+                    <td>{{ score.date_played|date:"M d, Y H:i" }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

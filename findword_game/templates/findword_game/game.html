@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>FindWord Game</title>
+    <!-- Bootstrap CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Rubik+Mono+One&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+        body {
+            background: linear-gradient(to right, #00c6ff, #0072ff);
+            color: white;
+            font-family: 'Rubik Mono One', sans-serif;
+        }
+        .game-container {
+            display: none;
+            margin-top: 2rem;
+        }
+        .grid {
+            display: grid;
+            gap: 5px;
+            justify-content: center;
+        }
+        .cell {
+            background-color: #ffffff10;
+            color: white;
+            border: 2px solid white;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            user-select: none;
+            font-size: 1.2rem;
+            border-radius: 5px;
+            transition: all 0.2s ease;
+        }
+        .cell.selected {
+            background-color: #f39c12;
+        }
+        .cell.found {
+            text-decoration: line-through;
+            background-color: #28a745;
+        }
+        .timer, .score, .high-score {
+            font-size: 1.3rem;
+        }
+        /* Cards for Times Up, Win, Hint, Pause, Feedback, Contact */
+        .times-up-message,
+        .win-message,
+        .hint-message,
+        .pause-message,
+        .feedback-form-card,
+        .thank-you-message,
+        .contact-card {
+            display: none;
+            background-color: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 30px;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            border-radius: 15px;
+            text-align: center;
+            width: 400px;
+        }
+        .word-list {
+            font-size: 1.1rem;
+        }
+        .settings {
+            margin-bottom: 1rem;
+        }
+        .word-found {
+            text-decoration: line-through;
+            color: #28a745;
+        }
+        .definition {
+            font-size: 0.9rem;
+            color: #f8f9fa;
+            margin-top: 10px;
+        }
+        .btn-hint {
+            margin-left: 1rem;
+        }
+        .btn-close-card {
+            margin-top: 15px;
+        }
+        /* The feedback textarea must appear in black text */
+        #feedback-form-card textarea {
+            color: black;
+        }
+    </style>
+</head>
+<body>
+<div class="container py-5">
+    <!-- ===== Header ===== -->
+    <div class="text-center">
+        <h1 class="display-4">
+            Welcome, <span id="username-display">{{ user.first_name }}</span>!
+        </h1>
+        <p class="lead">🧠 Find all the hidden words in the grid!</p>
+
+        <div class="settings">
+            <label>⏱ Time Limit:
+                <select id="time-setting">
+                    <option value="30">30s</option>
+                    <option value="60" selected>60s</option>
+                    <option value="90">90s</option>
+                    <option value="120">120s</option>
+                    <option value="190">190s</option>
+                    <option value="220">220s</option>
+                </select>
+            </label>
+            <label class="ms-3">📏 Grid Size:
+                <select id="grid-size-setting">
+                    <option value="4">4×4 (Easy – Level 1)</option>
+                    <option value="5" selected>5×5 (Easy – Level 2)</option>
+                    <option value="6">6×6 (Medium – Level 3)</option>
+                    <option value="8">8×8 (Medium – Level 4)</option>
+                    <option value="10">10×10 (Hard – Level 5)</option>
+                    <option value="12">12×12 (Hard – Level 6)</option>
+                </select>
+            </label>
+        </div>
+
+        <button id="start-btn" class="btn btn-warning btn-lg">Start Game</button>
+    </div>
+
+    <!-- ===== Game Container ===== -->
+    <div class="game-container" id="game-container">
+        <!-- Pause, Feedback & Contact Buttons -->
+        <div class="d-flex justify-content-end mb-2">
+            <button id="pause-btn" class="btn btn-secondary btn-sm me-2">⏸️ Pause</button>
+            <button id="feedback-btn" class="btn btn-light btn-sm me-2">💬 Feedback</button>
+            <button id="contact-btn" class="btn btn-outline-light btn-sm">📞 Contact Us</button>
+        </div>
+
+        <!-- Controls: Timer, Score, High Score, Restart, Hint -->
+        <div class="d-flex justify-content-between my-3 flex-wrap">
+            <div class="timer">⏱️ Time Left: <span id="timer">60</span>s</div>
+            <div class="score">⭐ Score: <span id="score">0</span></div>
+            <div class="high-score">🏆 High Score: <span id="high-score">0</span></div>
+            <button id="retry-btn" class="btn btn-light btn-sm">🔁 Restart</button>
+            <button id="hint-btn" class="btn btn-info btn-sm btn-hint">💡 Hint</button>
+        </div>
+
+        <!-- Grid of Letters -->
+        <div class="grid" id="grid"></div>
+
+        <!-- Word List -->
+        <div class="mt-3 word-list">
+            <strong>Find these words:</strong> <span id="word-list"></span>
+        </div>
+
+        <!-- Definition Box -->
+        <div class="mt-2" id="definition-box"></div>
+    </div>
+
+    <!-- ===== Times Up Card ===== -->
+    <div class="times-up-message" id="times-up">
+        <h2>⏰ Time's Up!!!</h2>
+        <button id="cancel-message" class="btn btn-danger btn-close-card">Close</button>
+    </div>
+
+    <!-- ===== Win Card ===== -->
+    <div class="win-message" id="win-msg">
+        <h2>🎉 You found all the words!</h2>
+        <p>Your score: <span id="final-score">0</span></p>
+        <button id="win-close" class="btn btn-success btn-close-card">Close</button>
+    </div>
+
+    <!-- ===== Hint Card ===== -->
+    <div class="hint-message" id="hint-msg">
+        <h2>💡 Hint</h2>
+        <p id="hint-text"></p>
+        <button id="hint-close" class="btn btn-warning btn-close-card">Close</button>
+    </div>
+
+    <!-- ===== Pause Card ===== -->
+    <div class="pause-message times-up-message" id="pause-msg">
+        <h2>⏸️ Game Paused</h2>
+        <button id="resume-btn" class="btn btn-success btn-close-card">▶️ Resume</button>
+    </div>
+
+    <!-- ===== Feedback Form Card ===== -->
+    <div class="feedback-form-card times-up-message" id="feedback-form-card">
+        <h2>💬 Feedback</h2>
+        <textarea
+          id="feedback-text"
+          rows="4"
+          class="form-control mb-2"
+          placeholder="Enter your message..."
+        ></textarea>
+        <button id="submit-feedback" class="btn btn-primary">Submit</button>
+    </div>
+
+    <!-- ===== Thank You Card ===== -->
+    <div class="thank-you-message times-up-message" id="thank-you-msg">
+        <h2>🙏 Thank you for your feedback!</h2>
+        <button id="return-btn" class="btn btn-info btn-close-card">Return to Game</button>
+    </div>
+
+    <!-- ===== Contact Us Card ===== -->
+    <div class="contact-card times-up-message" id="contact-card">
+        <h2>📞 Contact Us</h2>
+        <p>
+            <strong>Email:</strong><br />
+            support@findwordgame.com
+        </p>
+        <p>
+            <strong>Address:</strong><br />
+            123 Learning Lane<br />
+            Educator City, ED 45678
+        </p>
+        <p>
+            <strong>Phone:</strong><br />
+            +1 (555) 123-4567
+        </p>
+        <button id="contact-close" class="btn btn-danger btn-close-card">Close</button>
+    </div>
+</div>
+
+<!-- ===== JavaScript ===== -->
+<script>
+    // ---------------------------
+    // Achievement Tracking Logic
+    // ---------------------------
+    let lastFoundTimestamps = [];
+  
+    function checkQuickStreak() {
+      // Keep only the last 3 timestamps
+      if (lastFoundTimestamps.length > 3) {
+        lastFoundTimestamps.shift();
+      }
+      // If 3 words found in under 5 seconds, award "quick_streak"
+      if (lastFoundTimestamps.length === 3) {
+        const t0 = lastFoundTimestamps[0];
+        const t2 = lastFoundTimestamps[2];
+        if ((t2 - t0) <= 5000) {
+          awardAchievement('quick_streak', '3 words in under 5 seconds');
+          lastFoundTimestamps = [];
+        }
+      }
+    }
+  
+    function awardAchievement(code, details = '') {
+      // Show a temporary badge/card on screen
+      const achievementBadge = document.createElement('div');
+      achievementBadge.classList.add('times-up-message');
+      achievementBadge.style.width = 'auto';
+      achievementBadge.innerHTML = `
+        <h2>🏅 Achievement Unlocked!</h2>
+        <p>${details}</p>
+        <button id="ach-close" class="btn btn-primary btn-close-card">Close</button>
+      `;
+      document.body.appendChild(achievementBadge);
+      achievementBadge.style.display = 'block';
+  
+      // Close button removes the badge
+      achievementBadge.querySelector('#ach-close').addEventListener('click', () => {
+        achievementBadge.remove();
+      });
+  
+      // Send achievement to Django backend
+      fetch('/award-achievement/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: `achievement=${code}&details=${encodeURIComponent(details)}`
+      })
+      .then(res => res.json())
+      .then(data => console.log('Achievement response:', data))
+      .catch(err => console.error('Error awarding achievement:', err));
+    }
+  
+    // ----------------------------------------
+    // Word definitions mapping (30 fun words)
+    // ----------------------------------------
+    const allWords = {
+      "SUNSET":      "The daily disappearance of the sun below the horizon.",
+      "RAINBOW":     "An arc of colored light in the sky caused by refraction.",
+      "BANANA":      "A long, curved fruit with a yellow skin and sweet flesh.",
+      "PENGUIN":     "A flightless seabird with black-and-white plumage.",
+      "MOUNTAIN":    "A large natural elevation rising abruptly from the surrounding level.",
+      "UNICORN":     "A mythical horse-like creature with a single horn on its forehead.",
+      "BUBBLE":      "A thin sphere of liquid enclosing air or another gas.",
+      "KITTEN":      "A young cat.",
+      "CIRCUS":      "A traveling company of performers giving acrobatic and other entertainments.",
+      "TREASURE":    "A quantity of precious metals, gems, or other valuable objects.",
+      "BICYCLE":     "A vehicle with two wheels, propelled by pedals.",
+      "GIRAFFE":     "A tall African mammal with a very long neck and spotted coat.",
+      "CHOCOLATE":   "A sweet food made from roasted and ground cacao seeds.",
+      "RAINCOAT":    "A waterproof or water-resistant coat worn in the rain.",
+      "PAJAMAS":     "Loose-fitting sleepwear worn for comfort while sleeping.",
+      "DRAGON":      "A mythical fire-breathing creature often depicted as a large reptile.",
+      "BALLOON":     "A flexible bag that can be inflated with gas, often for decoration.",
+      "CUPCAKE":     "A small, single-serving cake usually frosted on top.",
+      "MARSHMALLOW": "A soft, spongy confection made of sugar, gelatin, and water.",
+      "SUNFLOWER":   "A tall plant with a large yellow flower head that follows the sun.",
+      "JELLYBEAN":   "A small bean-shaped candy with a sugary shell.",
+      "POTATO":      "A starchy tuber of the nightshade family, widely eaten as a vegetable.",
+      "TURTLE":      "A reptile with a hard shell that lives on land or in water.",
+      "GINGERBREAD": "A sweet baked good flavored with ginger, often cut into shapes.",
+      "KOALA":       "An arboreal Australian marsupial with grey fur and large ears.",
+      "CLOCK":       "A device used for measuring and indicating time.",
+      "LANTERN":     "A portable lamp with a protective enclosure for the flame or bulb.",
+      "COMET":       "A celestial object made of ice and dust that orbits the sun.",
+      "PINEAPPLE":   "A tropical fruit with spiky skin and sweet, juicy flesh.",
+      "ZEBRA":       "An African wild horse with black-and-white stripes.",
+      "YOYO":        "A toy consisting of an axle connected to two disks, with a string looped around the axle.",
+      "WIZARD":      "A person who practices magic or sorcery in folklore.",
+      "BLOSSOM":     "A flower or a mass of flowers on a tree or plant.",
+      "OCEAN":       "A vast body of salt water that covers almost three-quarters of the Earth.",
+      "MUSEUM":      "A building where historical, scientific, or artistic objects are exhibited.",
+      "PALACE":      "A large, stately residence, especially one for a head of state or royal family.",
+      "VOYAGE":      "A long journey involving travel by sea or in space."
+    };
+  
+    let words         = [];      // The list of words that will actually be placed
+    let gridSize      = 10;
+    let timer;
+    let timeLeft      = 60;
+    let gridMatrix;
+    let selectedCells = [];
+    let selectedWord  = "";
+    let foundWords    = [];
+    let score         = 0;
+    let highScore     = localStorage.getItem("highScore") || 0;
+    let hintUsed      = false;
+    let isPaused      = false;
+  
+    // Grab references to cards & buttons
+    const timesUpCard      = document.getElementById("times-up");
+    const winCard          = document.getElementById("win-msg");
+    const hintCard         = document.getElementById("hint-msg");
+    const pauseCard        = document.getElementById("pause-msg");
+    const feedbackFormCard = document.getElementById("feedback-form-card");
+    const thankYouCard     = document.getElementById("thank-you-msg");
+    const contactCard      = document.getElementById("contact-card");
+  
+    const pauseBtn         = document.getElementById("pause-btn");
+    const resumeBtn        = document.getElementById("resume-btn");
+    const feedbackBtn      = document.getElementById("feedback-btn");
+    const submitFeedbackBtn= document.getElementById("submit-feedback");
+    const returnBtn        = document.getElementById("return-btn");
+    const contactBtn       = document.getElementById("contact-btn");
+    const contactCloseBtn  = document.getElementById("contact-close");
+  
+    // Display stored high score
+    document.getElementById("high-score").innerText = highScore;
+  
+    // ===== Start Game Button Event =====
+    document.getElementById("start-btn").addEventListener("click", () => {
+      // 1. Read grid size and user‐selected time
+      gridSize = parseInt(document.getElementById("grid-size-setting").value);
+      const userTime = parseInt(document.getElementById("time-setting").value);
+      timeLeft = userTime;
+  
+      // 2. Build candidate list: only words whose length ≤ gridSize
+      const candidates = Object.keys(allWords).filter(w => w.length <= gridSize);
+  
+      // 3. Decide how many words to pick:
+      //    • Never more than candidates.length
+      //    • Never more than gridSize × 3  (approx. 3 words per row)
+      //    • Never more than floor(userTime / 6) (6 seconds per word on average)
+      const maxByGrid = gridSize * 3;
+      const maxByTime = Math.floor(userTime / 6);
+      const maxWords  = Math.min(candidates.length, maxByGrid, maxByTime);
+  
+      // 4. Randomly pick exactly maxWords from candidates
+      if (candidates.length <= maxWords) {
+        words = [...candidates];
+      } else {
+        const shuffled = candidates.sort(() => 0.5 - Math.random());
+        words = shuffled.slice(0, maxWords);
+      }
+  
+      // Hide “Start” and show game area
+      document.getElementById("start-btn").style.display       = "none";
+      document.getElementById("game-container").style.display = "block";
+      resetGame();
+    });
+  
+    // ===== Retry Button Event =====
+    document.getElementById("retry-btn").addEventListener("click", () => {
+      resetGame();
+    });
+  
+    // ===== Close Times Up Card =====
+    document.getElementById("cancel-message").addEventListener("click", () => {
+      timesUpCard.style.display = "none";
+    });
+  
+    // ===== Close Win Card =====
+    document.getElementById("win-close").addEventListener("click", () => {
+      winCard.style.display = "none";
+    });
+  
+    // ===== Close Hint Card =====
+    document.getElementById("hint-close").addEventListener("click", () => {
+      hintCard.style.display = "none";
+    });
+  
+    // ===== Hint Button Event =====
+    document.getElementById("hint-btn").addEventListener("click", () => {
+      if (hintUsed) return; // only once per round
+      const remaining = words.filter(w => !foundWords.includes(w));
+      if (remaining.length === 0) return; // no hints needed
+      const hintWord = remaining[Math.floor(Math.random() * remaining.length)];
+      document.getElementById("hint-text").innerText =
+        `One of the remaining words starts with “${hintWord[0]}”.`;
+      hintCard.style.display = "block";
+      hintUsed = true;
+    });
+  
+    // ===== Pause Button Event =====
+    pauseBtn.addEventListener("click", () => {
+      if (!isPaused) {
+        clearInterval(timer);
+        isPaused = true;
+        pauseCard.style.display = "block";
+      }
+    });
+  
+    // ===== Resume Button Event =====
+    resumeBtn.addEventListener("click", () => {
+      if (isPaused) {
+        pauseCard.style.display = "none";
+        startTimer();
+        isPaused = false;
+      }
+    });
+  
+    // ===== Feedback Button Event =====
+    feedbackBtn.addEventListener("click", () => {
+      feedbackFormCard.style.display = "block";
+    });
+  
+    // ===== Submit Feedback Event =====
+    submitFeedbackBtn.addEventListener("click", () => {
+      const message = document.getElementById("feedback-text").value.trim();
+      if (message === "") return;
+  
+      // Hide form + show “Thank You” card
+      feedbackFormCard.style.display = "none";
+      thankYouCard.style.display  = "block";
+      document.getElementById("feedback-text").value = "";
+  
+      // Send feedback to backend
+      fetch('/submit-feedback/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `message=${encodeURIComponent(message)}`
+      })
+      .then(response => response.json())
+      .then(data => console.log('Feedback response:', data))
+      .catch(err => console.error('Error submitting feedback:', err));
+    });
+  
+    // ===== Return from “Thank You” Card =====
+    returnBtn.addEventListener("click", () => {
+      thankYouCard.style.display = "none";
+    });
+  
+    // ===== Contact Us Button Event =====
+    contactBtn.addEventListener("click", () => {
+      contactCard.style.display = "block";
+    });
+  
+    // ===== Close Contact Card =====
+    contactCloseBtn.addEventListener("click", () => {
+      contactCard.style.display = "none";
+    });
+  
+    // ===== Display Definition (Educational Content) =====
+    function showDefinition(word) {
+      const box = document.getElementById("definition-box");
+      const definition = allWords[word] || "Definition not available.";
+      box.innerHTML = `<p class="definition"><strong>${word}:</strong> ${definition}</p>`;
+    }
+  
+    // ===== Start New Round: generate grid, then render word list, then start timer =====
+    function startGame() {
+      // 1. Generate the grid & filter `words` to only placed words
+      generateGrid();
+  
+      // 2. Now build the word list from the *actually placed* words
+      document.getElementById("word-list").innerHTML =
+        words.map(w => `<span class="word" data-word="${w}">${w}</span>`).join(", ");
+      
+      // 3. Start the countdown
+      startTimer();
+    }
+  
+    function resetGame() {
+        // ✅ Stop any existing timer
+        clearInterval(timer); // Prevent multiple intervals
+        timer = null;
+      
+        // Recompute gridSize + userTime + candidate words + maxWords
+        gridSize = parseInt(document.getElementById("grid-size-setting").value);
+        const userTime = parseInt(document.getElementById("time-setting").value);
+        timeLeft = userTime;
+      
+        // Build candidate list again
+        const candidates = Object.keys(allWords).filter(w => w.length <= gridSize);
+        const maxByGrid = gridSize * 3;
+        const maxByTime = Math.floor(userTime / 6);
+        const maxWords = Math.min(candidates.length, maxByGrid, maxByTime);
+      
+        if (candidates.length <= maxWords) {
+          words = [...candidates];
+        } else {
+          const shuffled = candidates.sort(() => 0.5 - Math.random());
+          words = shuffled.slice(0, maxWords);
+        }
+      
+        hintUsed = false;
+        isPaused = false;
+        foundWords = [];
+        selectedCells = [];
+        selectedWord = "";
+        score = 0;
+      
+        document.getElementById("score").innerText = score;
+        document.getElementById("timer").innerText = timeLeft;
+        document.getElementById("grid").innerHTML = "";
+      
+        timesUpCard.style.display = "none";
+        winCard.style.display = "none";
+        hintCard.style.display = "none";
+        pauseCard.style.display = "none";
+        feedbackFormCard.style.display = "none";
+        thankYouCard.style.display = "none";
+        contactCard.style.display = "none";
+        document.getElementById("definition-box").innerHTML = "";
+      
+        // Finally, build the grid and show everything
+        startGame();
+      }
+      
+  
+    // ===== Countdown Timer =====
+    function startTimer() {
+        clearInterval(timer); // clear old interval just in case
+      
+        document.getElementById("timer").innerText = timeLeft;
+      
+        timer = setInterval(() => {
+          timeLeft--;
+          document.getElementById("timer").innerText = timeLeft;
+      
+          if (timeLeft <= 0) {
+            clearInterval(timer);
+            timesUpCard.style.display = "block";
+      
+            if (score > highScore) {
+              localStorage.setItem("highScore", score);
+              document.getElementById("high-score").innerText = score;
+            }
+          }
+        }, 1000);
+      }
+      
+  
+    // ===== Generate the Grid & Place Words =====
+    function generateGrid() {
+      // 1. Initialize an empty grid matrix
+      gridMatrix = Array.from({ length: gridSize }, () => Array(gridSize).fill(""));
+  
+      const directions = [
+        [0, 1], [0, -1], [1, 0], [-1, 0],
+        [1, 1], [-1, -1], [1, -1], [-1, 1]
+      ];
+  
+      // 2. Attempt to place each candidate word; keep only the successfully placed ones
+      const successfullyPlacedWords = [];
+  
+      words.forEach(word => {
+        let placed = false;
+        let attempts = 0;
+        // 50% chance to place forward or reversed
+        const wordVariant = Math.random() < 0.5
+                           ? word
+                           : word.split("").reverse().join("");
+  
+        while (!placed && attempts < 100) {
+          attempts++;
+          const dir = directions[Math.floor(Math.random() * directions.length)];
+          const row = Math.floor(Math.random() * gridSize);
+          const col = Math.floor(Math.random() * gridSize);
+          let r = row, c = col, fits = true;
+  
+          // Check if this word variant can fit in the chosen direction
+          for (let i = 0; i < wordVariant.length; i++) {
+            if (
+              r < 0 || r >= gridSize ||
+              c < 0 || c >= gridSize ||
+              (gridMatrix[r][c] !== "" && gridMatrix[r][c] !== wordVariant[i])
+            ) {
+              fits = false;
+              break;
+            }
+            r += dir[0];
+            c += dir[1];
+          }
+  
+          if (fits) {
+            // It fits, so place it letter by letter
+            r = row;
+            c = col;
+            for (let i = 0; i < wordVariant.length; i++) {
+              gridMatrix[r][c] = wordVariant[i];
+              r += dir[0];
+              c += dir[1];
+            }
+            placed = true;
+            // Only add to our “placed” list when it successfully fits
+            successfullyPlacedWords.push(word);
+          }
+        }
+      });
+  
+      // 3. Overwrite words[] so that it contains only those that truly got placed
+      words = successfullyPlacedWords;
+  
+      // 4. Fill any empty cells with random letters
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      for (let r = 0; r < gridSize; r++) {
+        for (let c = 0; c < gridSize; c++) {
+          if (gridMatrix[r][c] === "") {
+            gridMatrix[r][c] = letters[Math.floor(Math.random() * letters.length)];
+          }
+        }
+      }
+  
+      // 5. Render the grid in the DOM, attaching click‐handlers for each cell
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
+      grid.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+  
+      for (let r = 0; r < gridSize; r++) {
+        for (let c = 0; c < gridSize; c++) {
+          const cell = document.createElement("div");
+          cell.classList.add("cell");
+          cell.innerText = gridMatrix[r][c];
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+  
+          cell.addEventListener("click", () => {
+            // We DO NOT early‐return on “found” cells, so overlaps still work
+            // if (cell.classList.contains("found")) return;
+  
+            if (cell.classList.contains("selected")) {
+              // If already selected, unselect it
+              cell.classList.remove("selected");
+              const idx = selectedCells.indexOf(cell);
+              if (idx !== -1) {
+                selectedCells.splice(idx, 1);
+                selectedWord = selectedCells.map(el => el.innerText).join("");
+              }
+            } else {
+              // Otherwise, select the cell
+              cell.classList.add("selected");
+              selectedCells.push(cell);
+              selectedWord += cell.innerText;
+            }
+  
+            // Check if the letters we've selected form one of our placed words
+            if (words.includes(selectedWord)) {
+              foundWords.push(selectedWord);
+              score += 10;
+              document.getElementById("score").innerText = score;
+  
+              lastFoundTimestamps.push(Date.now());
+              checkQuickStreak();
+  
+              // Mark these cells visually as “found” (green)
+              // but do not block them from being clicked again, in case of overlap
+              selectedCells.forEach(cEl => {
+                cEl.classList.remove("selected");
+                cEl.classList.add("found");
+              });
+  
+              // Strike‐through in the word list
+              document.querySelectorAll('.word').forEach(span => {
+                if (span.dataset.word === selectedWord) {
+                  span.classList.add("word-found");
+                }
+              });
+  
+              // Show definition below the grid
+              showDefinition(selectedWord);
+  
+              selectedCells = [];
+              selectedWord = "";
+  
+              // If this was the last placed word
+              if (foundWords.length === words.length) {
+                clearInterval(timer);
+                awardAchievement('level_complete', `Completed ${gridSize}×${gridSize} level`);
+                sendScoreToServer(score);
+                document.getElementById("final-score").innerText = score;
+                winCard.style.display = "block";
+                if (score > highScore) {
+                  localStorage.setItem("highScore", score);
+                  document.getElementById("high-score").innerText = score;
+                }
+              }
+            }
+          });
+  
+          grid.appendChild(cell);
+        }
+      }
+    }
+  
+    // ===== CSRF & Send Score to Django Backend =====
+    function getCSRFToken() {
+      let cookieValue = null;
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        const trimmed = cookie.trim();
+        if (trimmed.startsWith('csrftoken=')) {
+          cookieValue = trimmed.substring('csrftoken='.length);
+          break;
+        }
+      }
+      return cookieValue;
+    }
+  
+    function sendScoreToServer(score) {
+      fetch('/save-score/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: `score=${score}`
+      })
+      .then(response => response.json())
+      .then(data => console.log('Score saved:', data))
+      .catch(error => console.error('Error saving score:', error));
+    }
+  </script>
+  
+</body>
+</html>

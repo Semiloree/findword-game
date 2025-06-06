@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<div class="container" style="min-height: 90vh;">
+    <div class="row justify-content-center align-items-center">
+        <div class="col-lg-10">
+            <div class="row shadow-lg rounded overflow-hidden">
+                <!-- Image Column -->
+                <div class="col-md-6 p-0 d-flex align-items-center justify-content-center bg-light">
+                    <img src="{% static 'images/signup-image.png' %}" alt="Register Image"
+                         class="img-fluid"
+                         style="object-fit: contain; max-height: 100%; border-top-left-radius: 10px; border-bottom-left-radius: 10px;">
+                </div>
+
+                <!-- Form Column -->
+                <div class="col-md-6 bg-white p-4">
+                    <h1 class="text-center text-primary fw-bold">FindWord Game</h1>
+                    <h4 class="text-center mb-4 text-secondary">Create Your Account</h4>
+                    <form method="POST" novalidate>
+                        {% csrf_token %}
+
+                        <!-- Full Name -->
+                        <div class="mb-3">
+                            <label for="full_name" class="form-label">Full Name</label>
+                            <input type="text" class="form-control {% for msg in messages %}{% if 'name' in msg.tags %}is-invalid{% endif %}{% endfor %}" name="full_name" required>
+                            {% for message in messages %}
+                                {% if 'name' in message.tags %}
+                                    <div class="invalid-feedback">{{ message }}</div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+
+                        <!-- Email -->
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email address</label>
+                            <input type="email" class="form-control {% for msg in messages %}{% if 'email' in msg.tags %}is-invalid{% endif %}{% endfor %}" name="email" required>
+                            {% for message in messages %}
+                                {% if 'email' in message.tags %}
+                                    <div class="invalid-feedback">{{ message }}</div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+
+                        <!-- Password -->
+                        <div class="mb-3 position-relative">
+                            <label for="password" class="form-label">Password</label>
+                            <input type="password" id="password" class="form-control {% for msg in messages %}{% if 'password' in msg.tags %}is-invalid{% endif %}{% endfor %}" name="password" required>
+                            <i class="bi bi-eye-slash toggle-password" data-target="password" style="position:absolute; top: 38px; right: 10px; cursor: pointer;"></i>
+                        </div>
+
+                        <!-- Confirm Password -->
+                        <div class="mb-3 position-relative">
+                            <label for="confirm_password" class="form-label">Confirm Password</label>
+                            <input type="password" id="confirm_password" class="form-control {% for msg in messages %}{% if 'confirm' in msg.tags %}is-invalid{% endif %}{% endfor %}" name="confirm_password" required>
+                            <i class="bi bi-eye-slash toggle-password" data-target="confirm_password" style="position:absolute; top: 38px; right: 10px; cursor: pointer;"></i>
+                            {% for message in messages %}
+                                {% if 'confirm' in message.tags %}
+                                    <div class="invalid-feedback">{{ message }}</div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">Register</button>
+                    </form>
+
+                    <div class="text-center mt-3">
+                        <small>Already have an account? <a href="{% url 'login' %}">Login here</a></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll('.toggle-password').forEach(icon => {
+            icon.addEventListener('click', function () {
+                const target = document.getElementById(this.dataset.target);
+                if (target.type === "password") {
+                    target.type = "text";
+                    this.classList.remove("bi-eye-slash");
+                    this.classList.add("bi-eye");
+                } else {
+                    target.type = "password";
+                    this.classList.remove("bi-eye");
+                    this.classList.add("bi-eye-slash");
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}
+
